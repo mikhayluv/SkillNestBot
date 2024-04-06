@@ -6,7 +6,7 @@ def create_connection(db_file):
     return conn
 
 
-def create_table(conn):
+def create_messages_log_table(conn):
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages_log 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT,  
@@ -18,7 +18,7 @@ def create_table(conn):
     cursor.close()
 
 
-def drop_table(conn, name):
+def drop_messages_log_table(conn, name):
     cursor = conn.cursor()
     query = f"DROP TABLE IF EXISTS {name}"
     cursor.execute(query)
@@ -26,7 +26,7 @@ def drop_table(conn, name):
     cursor.close()
 
 
-def add_message(conn, user_id, username, message_text):
+def add_message_to_log_table(conn, user_id, username, message_text):
     cursor = conn.cursor()
     cursor.execute("INSERT INTO messages_log (user_id, username, message_text) VALUES (?, ?, ?)",
                    (user_id, username, message_text))
