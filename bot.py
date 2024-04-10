@@ -6,7 +6,8 @@ bot = telebot.TeleBot(config.TOKEN)
 
 conn = database.create_connection('skillnestbot.db')
 database.create_messages_log_table(conn)
-# database.drop_messages_log_table(conn, 'messages_log')
+
+# database.drop_table(conn, 'messages_log')
 
 def log_message(message):
     user_id = message.from_user.id
