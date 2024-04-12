@@ -49,7 +49,7 @@ def create_vacancy_data_table(conn):
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS vacancy_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,  
-                    vacancy_id BIGINT, 
+                    vacancy_id BIGINT NOT NULL, 
                     vacancy_name TEXT,
                     area TEXT, 
                     salary_from INTEGER,
@@ -64,7 +64,7 @@ def create_keys_kills_data_table(conn):
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS key_kills_data 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT,  
-                    vacancy_id BIGINT, 
+                    vacancy_id BIGINT NOT NULL, 
                     vacancy_name TEXT,
                     key_skill TEXT''')
     conn.commit()
@@ -80,9 +80,9 @@ def add_vacancy_data(conn, vacancy_id, vacancy_name, area, salary_from, salary_t
     cursor.close()
 
 
-# def add_keys_kills_data(conn):
-#     cursor = conn.cursor()
-#     cursor.execute("INSERT INTO key_kills_data (user_id, username, message_text) VALUES (?, ?, ?)",
-#                    (user_id, username, message_text))
-#     conn.commit()
-#     cursor.close()
+def add_keys_kills_data(conn, vacancy_id, vacancy_name, key_skill):
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO key_kills_data (vacancy_id, vacancy_name, key_skill) VALUES (?, ?, ?)",
+                   (vacancy_id, vacancy_name, key_skill))
+    conn.commit()
+    cursor.close()
