@@ -7,7 +7,6 @@ conn = database.create_connection('skillnestbot.db')
 
 
 def get_list_id_vacancies(text):
-
     url_list = 'https://api.hh.ru/vacancies'
     list_id = []
     params = {'text': text}
@@ -22,7 +21,7 @@ def get_list_id_vacancies(text):
             list_id.append(vac['id'])
     else:
         i = 0
-        while i <= 0:
+        while i <= 1:
             params['per_page'] = 100
             params['page'] = i
             r = requests.get(url_list, params=params)
@@ -55,7 +54,6 @@ def get_salary(data):
 
 
 def get_and_store_vacancy(list_id):
-
     count = 0
 
     for vac_id in list_id:
@@ -81,38 +79,34 @@ def get_and_store_vacancy(list_id):
 
 
 def get_and_store_key_skills(list_id):
+    all_skills = ''
     for vac_id in list_id:
         data = get_data_vacancy(vac_id)
         vacancy_id = data.get('id')
         vacancy_name = data.get('name')
         key_skills = [skill['name'] for skill in data.get('key_skills', [])]
-        if key_skills is not None:
-            vacancies_data = [(vacancy_id, vacancy_name, key_skills)]
-            print(f'vacancies_data: {vacancies_data}')
-            # database.add_keys_kills_data(conn, vacancies_data[0], vacancies_data[1], vacancies_data[2])
+        skills = (', '.join((map(str, key_skills))))
+        if key_skills:
+            all_skills += skills
+            # database.add_keys_kills_data(conn, vacancy_id, vacancy_name, skills)
         else:
             continue
-
-        # if key_skills:
-        #     for skill in key_skills:
-        #         database.add_keys_kills_data(conn, vacancy_id, vacancy_name, skill)
-
-
+    print(all_skills)
 
 
 def main():
-    database.drop_table(conn, 'vacancy_data')
-    database.create_vacancy_data_table(conn)
+    # database.drop_table(conn, 'vacancy_data')
+    # database.create_vacancy_data_table(conn)
+
+    database.drop_table(conn, 'key_skills_data')
+    database.create_keys_kills_data_table(conn)
+
     text_search = 'junior data science'
     list_id = get_list_id_vacancies(text_search)
-    get_and_store_key_skills(list_id)
-    # for key, value in enumerate(list_id):
-    #     print(f"index: {key+1}, id: {value}")
-    # print(list_id[120])
-    # id = 96278252
-    # null_count = list_id.count(None)
-    # print("Количество значений None в массиве:", null_count)
+
     # get_and_store_vacancy(list_id)
+
+    get_and_store_key_skills(list_id)
 
 
 main()
