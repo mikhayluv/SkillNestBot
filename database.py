@@ -34,17 +34,6 @@ def add_message_to_log_table(conn, user_id, username, message_text):
     cursor.close()
 
 
-'''
-Поля для таблицы:
-    - ID
-    - ID вакансии
-    - Название вакансии
-    - Город
-    - ЗП (от, до, валюта)
-    - ОПИСАНИЕ 
-'''
-
-
 def create_vacancy_data_table(conn):
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS vacancy_data (
