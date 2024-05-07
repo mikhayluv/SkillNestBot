@@ -1,13 +1,22 @@
 import telebot
 import config
 import database
+import hh_api
+import re
 
 bot = telebot.TeleBot(config.TOKEN)
 
 conn = database.create_connection('skillnestbot.db')
-database.create_messages_log_table(conn)
 
 # database.drop_table(conn, 'messages_log')
+database.drop_table(conn, 'vacancy_data')
+
+database.create_messages_log_table(conn)
+database.create_vacancy_data_table(conn)
+
+
+user_states = {}
+
 
 def log_message(message):
     user_id = message.from_user.id
@@ -19,29 +28,62 @@ def log_message(message):
 def start_messages(message):
     log_message(message)
     bot.send_message(message.from_user.id,
-                     'Привет, дружище! Я Skill Nest Bot - твой помощник в поиске актуальных требований на рынке труда.')
+                     'Привет! Я Skill Nest Bot - твой помощник в поиске актуальных требований на рынке труда.')
     bot.send_message(message.from_user.id,
-                     'Выбери команду "Вакансия"!')
+                     'Напиши "Вакансия"!')
 
 @bot.message_handler(commands=['help'])
 def help_messages(message):
     log_message(message)
     bot.send_message(message.from_user.id,
-                     'Запутался в себе? Хочешь большие коэффициенты? Хочешь жить как Папито? ИДИ НАХУЙ!')
+                     'Напиши "Вакансия"!')
 
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
     log_message(message)
-    if message.text == 'Привет':
-        bot.send_message(message.from_user.id, 'Привет, я Skill Nest бот!')
-    elif message.text == '/help':
-        bot.send_message(message.from_user.id, 'Напиши: "Привет"')
-    else:
-        bot.send_message(message.from_user.id, "Я тебя не понимаю, дружище. Напиши /help.")
+    if message.from_user.id in user_states:
+        state = user_states[message.from_user.id]
+        if state == 'waiting_for_vacancy_name':
+            user_states[message.from_user.id] = 'idle'
+            text_search = message.text
+            bot.send_message(message.from_user.id, f'Начинаю поиск по запросу: "{text_search}"')
+
+            list_id, found = hh_api.get_list_id_vacancies(text_search)
+
+            if not found:
+                user_states[message.from_user.id] = 'waiting_for_vacancy_name'
+                return bot.send_message(message.from_user.id, f'По вашему запросу "{text_search}" не было найдено вакансий :(\nПроверьте введенные данные!')
+
+            bot.send_message(message.from_user.id, f'По вашему запросу "{text_search}" было найдено {found} вакансий!')
+
+            try:
+                hh_api.get_and_store_vacancy(list_id, text_search)
+                skills = database.get_skills(conn, text_search)
+                skills = ', '.join([str(sk[0]) for sk in skills])
+                skills = hh_api.swap_skills(skills)
+                skills_list_top = hh_api.sort_and_count_key_skill(skills)
+                bot.send_message(message.from_user.id, f'Вот ТОП 10 навыков для "{text_search}":\n\n{skills_list_top}')
+            except Exception as e:
+                bot.send_message(message.from_user.id, f'Произошла ошибка: {e}')    #debug
+                bot.send_message(message.from_user.id, f'Произошли технические шоколадки :(')
+
+            return
+
+    if message.text.lower() == 'привет':
+        bot.send_message(message.from_user.id, 'Привет, напиши "Вакансия"')
+        return
+    elif message.text.lower() == 'вакансия':
+        user_states[message.from_user.id] = 'waiting_for_vacancy_name'
+        return bot.send_message(message.from_user.id,
+                                'Напиши название вакансии, которая тебя интересует, а я проанализирую свежие объявления и подскажу тебе навыки!')
+
+    return bot.send_message(message.from_user.id, "Я тебя не понимаю... Напиши /help.")
 
 
 def main():
     bot.polling(none_stop=True, interval=0)
 
-main()
+
+if __name__ == '__main__':
+    main()

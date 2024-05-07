@@ -41,37 +41,26 @@ def create_vacancy_data_table(conn):
                     vacancy_id BIGINT NOT NULL, 
                     vacancy_name TEXT,
                     area TEXT, 
-                    salary_from INTEGER,
-                    salary_to INTEGER,
-                    currency TEXT,
-                    description TEXT)''')
+                    description TEXT,
+                    lang TEXT,
+                    skills TEXT,
+                    text_search TEXT)''')
     conn.commit()
     cursor.close()
 
 
-def create_keys_kills_data_table(conn):
+def add_vacancy_data(conn, vacancy_id, vacancy_name, area, description, lang, skills, text_search):
     cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS key_skills_data (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,  
-                    vacancy_id BIGINT NOT NULL, 
-                    vacancy_name TEXT,
-                    key_skill TEXT)''')
+    cursor.execute("INSERT INTO vacancy_data (vacancy_id, vacancy_name, area, \
+                    description, lang, skills, text_search) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (vacancy_id, vacancy_name, area, description, lang, skills, text_search))
     conn.commit()
     cursor.close()
 
 
-def add_vacancy_data(conn, vacancy_id, vacancy_name, area, salary_from, salary_to, currency, description):
+def get_skills(conn, text_search):
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO vacancy_data (vacancy_id, vacancy_name, area, salary_from, \
-                    salary_to, currency, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                   (vacancy_id, vacancy_name, area, salary_from, salary_to, currency, description))
-    conn.commit()
+    cursor.execute("SELECT skills FROM vacancy_data WHERE text_search = ? AND skills IS NOT NULL", (text_search,))
+    skills = cursor.fetchall()
     cursor.close()
-
-
-def add_keys_kills_data(conn, vacancy_id, vacancy_name, key_skill):
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO key_skills_data (vacancy_id, vacancy_name, key_skill) VALUES (?, ?, ?)",
-                   (vacancy_id, vacancy_name, key_skill))
-    conn.commit()
-    cursor.close()
+    return skills

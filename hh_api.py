@@ -3,23 +3,21 @@ import json
 import database
 import time
 from collections import Counter
-import matplotlib.pyplot as plt
-import seaborn as sns
-import threading
+from langdetect import detect
+import re
 
 conn = database.create_connection('skillnestbot.db')
 
 
-def get_list_id_vacancies(text):
+def get_list_id_vacancies(search):
     url_list = 'https://api.hh.ru/vacancies'
     list_id = []
-    params = {'text': text}
+    params = {'text': search}
     r = requests.get(url_list, params=params)
     found = json.loads(r.text)['found']
-    if found:
-        print(f'По вашему запросу: "{text}" было найдено {found} вакансий!')
-    else:
-        print(f'По вашему запросу: "{text}" не было найдено вакансий :( \n Проверьте введенные данные!!!')
+    print(found)
+    if not found:
+        return [], 0
 
     if found <= 100:
         params['per_page'] = found
@@ -42,28 +40,17 @@ def get_list_id_vacancies(text):
                 list_id.append(vac['id'])
             i += 1
 
-    return list_id
+    return list_id, found
 
 
-def get_data_vacancy(id):
+def get_data_vacancy(vac_id):
     url_vac = 'https://api.hh.ru/vacancies/%s'
-    r = requests.get(url_vac % id)
+    r = requests.get(url_vac % vac_id)
     data = json.loads(r.text)
     return data
 
 
-def get_salary(data):
-    if data.get('salary') is None:
-        return {"currency": None, 'from': None, 'to': None, 'gross': None}
-    else:
-        salary_data = {'currency': data['salary'].get('currency'),
-                       'from': data['salary'].get('from'),
-                       'to': data['salary'].get('to'),
-                       'gross': data['salary'].get('gross')}
-        return salary_data
-
-
-def get_and_store_vacancy(list_id):
+def get_and_store_vacancy(list_id, text_search):
     count = 0
 
     for vac_id in list_id:
@@ -71,111 +58,82 @@ def get_and_store_vacancy(list_id):
         vacancy_id = data.get('id')
         vacancy_name = data.get('name')
         area = data.get('area', {}).get('name')
-        salary_data = get_salary(data)
-        salary_from = salary_data.get('from')
-        salary_to = salary_data.get('to')
-        currency = salary_data.get('currency')
         description = data.get('description')
+        lang = detect(description)
+        key_skills = [skill['name'].strip() for skill in data.get('key_skills', [])]
+        skills = (", ".join((map(str, key_skills))))
+        print(f'ID: {vacancy_id}')                        #debug prints
+        print(f'len skills: {len(skills)}')
+        print(f'len description: {len(description)}')
+        print(f'LANG description: {lang}')
+        if len(skills) > 1:
+            pass
+        else:
+            skills = None
+        if description is None:
+            continue
 
-        database.add_vacancy_data(conn, vacancy_id, vacancy_name, area, salary_from, salary_to, currency, description)
-
-        # print(f'iteration: {count}')
-        # print(f'vacancy_id: {vacancy_id}')
-        # print(f'vacancy_name: {vacancy_name}')
+        database.add_vacancy_data(conn, vacancy_id, vacancy_name, area, description, lang, skills, text_search)
 
         count += 1
         if count % 29 == 0:
             time.sleep(5)
 
-    print(f"STORE VACANCY IS DONE!")
 
-
-def get_and_store_key_skills(list_id):
-    all_skills = []
-    skills_txt = ''
-    for vac_id in list_id:
-        data = get_data_vacancy(vac_id)
-        vacancy_id = data.get('id')
-        vacancy_name = data.get('name')
-        key_skills = [skill['name'].strip() for skill in data.get('key_skills', [])]
-        skills = (", ".join((map(str, key_skills))))
-        if key_skills:
-            all_skills.append(skills)
-            skills_txt += f'{skills}, '
-            database.add_keys_kills_data(conn, vacancy_id, vacancy_name, skills)
-        else:
-            continue
-    skills_txt = skills_txt[:-2]
-    print(f"STORE SKILLS IS DONE!")
-    return all_skills, skills_txt
-
-
-def sort_and_count_key_skill(skills_txt):
-    skills_list = [skill.strip() for skill in skills_txt.split(",")]
-
-    skills_counts = Counter(skills_list)
-    sorted_skills = sorted(skills_counts.items(), key=lambda x: x[1], reverse=True)
-
-    return sorted_skills
-
-
-def run_threads(list_id):
-    result = []
-
-    thread_vacancy = threading.Thread(target=get_and_store_vacancy, args=[list_id])
-
-    def thread_key_skills():
-        all_skills, skills_txt = get_and_store_key_skills(list_id)
-        print(f'all_skills from thread key skills {all_skills}')
-        print(f'skills_txt from thread key skills {skills_txt}')
-        result.append(skills_txt)
-
-    thread_key_skills = threading.Thread(target=thread_key_skills)
-
-    thread_vacancy.start()
-    thread_key_skills.start()
-
-    thread_vacancy.join()
-    thread_key_skills.join()
-
-    skills = (", ".join((map(str, result))))
-    print("Results:", skills)
+def swap_skills(skills):
+    title_mapping = {
+        r'\bML\b': 'Machine Learning',
+        r'Машинное обучение': 'Machine Learning',
+        r'Data Analysis': 'Анализ данных',
+        r'PostgreSQL': 'SQL',
+        r'\bMySQL\b': 'SQL',
+        r'\bHTML5\b': 'HTML',
+        r'\bCSS3\b': 'CSS'
+    }
+    for pattern, replacement in title_mapping.items():
+        skills = re.sub(pattern, replacement, skills)
 
     return skills
 
 
-def draw_pie_scatter(text_search, skill_list):
-    data = [count for skill, count in skill_list[:10]]
-    labels = [skill for skill, count in skill_list[:10]]
+def sort_and_count_key_skill(skills_txt):
+    skills_list = [skill.strip() for skill in skills_txt.split(",") if skill.strip()]
+    skills_counts = Counter(skills_list)
+    sorted_skills = sorted(skills_counts.items(), key=lambda x: x[1], reverse=True)
 
-    colors = sns.color_palette('pastel')[:len(data)]
+    top_skills_text = '\n'.join([f"{skill} - {count}" for skill, count in sorted_skills[:10]])
 
-    plt.figure(figsize=(10, 8))
-    plt.pie(data, labels=labels, colors=colors, autopct='%.0f%%')
-    plt.title(f'Доли навыков по запросу: {text_search}')
-    plt.show()
+    return top_skills_text
 
 
-def main():
+# def main():
+#     get_list_id_vacancies(text_search)
+    # database.drop_table(conn, 'vacancy_data')
+    # database.create_vacancy_data_table(conn)
+    #
+    # list_id = get_list_id_vacancies(text_search)
+    #
+    # get_and_store_vacancy(list_id)
+    # skills = database.get_skills(conn, text_search)
+    # skills = ', '.join([str(sk[0]) for sk in skills])
+    # skills = swap_skills(skills)
+    # a = conn.cursor()
+    # a.execute("SELECT description FROM vacancy_data WHERE text_search = ?", (text_search,))
+    # description = a.fetchall()
+    # a.close()
+    # descriptions = ' '.join([str(desc[0]) for desc in description])
+    # print(type(descriptions))
+    # print(descriptions)
+    #
+    # skills_list_top = sort_and_count_key_skill(skills)
+    # print(f' skills_list_top {skills_list_top}')
+    #
+    # print(f'Вот ТОП 10 самых часто встречающихся навыков:')
+    # for skill, count in skills_list_top[:10]:
+    #     print(f"{skill} - {count}")
 
-    database.drop_table(conn, 'vacancy_data')
-    database.create_vacancy_data_table(conn)
 
-    database.drop_table(conn, 'key_skills_data')
-    database.create_keys_kills_data_table(conn)
-
-    text_search = 'Data Science Junior'
-    list_id = get_list_id_vacancies(text_search)
-
-    skills_txt = run_threads(list_id)
-
-    skills_list_top = sort_and_count_key_skill(skills_txt)
-
-    print(f'Вот ТОП 10 самых часто встречающихся навыков:')
-    for skill, count in skills_list_top[:10]:
-        print(f"{skill} - {count}")
-
-    draw_pie_scatter(text_search, skills_list_top)
+# text_search = 'Пиво к=вы'
+# main()
 
 
-main()
