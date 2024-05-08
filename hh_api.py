@@ -15,7 +15,6 @@ def get_list_id_vacancies(search):
     params = {'text': search}
     r = requests.get(url_list, params=params)
     found = json.loads(r.text)['found']
-    print(found)
     if not found:
         return [], 0
 
@@ -62,10 +61,10 @@ def get_and_store_vacancy(list_id, text_search):
         lang = detect(description)
         key_skills = [skill['name'].strip() for skill in data.get('key_skills', [])]
         skills = (", ".join((map(str, key_skills))))
-        print(f'ID: {vacancy_id}')                        #debug prints
-        print(f'len skills: {len(skills)}')
-        print(f'len description: {len(description)}')
-        print(f'LANG description: {lang}')
+        # print(f'ID: {vacancy_id}')                        #debug prints
+        # print(f'len skills: {len(skills)}')
+        # print(f'len description: {len(description)}')
+        # print(f'LANG description: {lang}')
         if len(skills) > 1:
             pass
         else:
@@ -82,13 +81,14 @@ def get_and_store_vacancy(list_id, text_search):
 
 def swap_skills(skills):
     title_mapping = {
-        r'\bML\b': 'Machine Learning',
-        r'Машинное обучение': 'Machine Learning',
+        r'\bML\b': 'Машинное обучение',
+        r'Machine Learning': 'Машинное обучение',
         r'Data Analysis': 'Анализ данных',
         r'PostgreSQL': 'SQL',
         r'\bMySQL\b': 'SQL',
         r'\bHTML5\b': 'HTML',
-        r'\bCSS3\b': 'CSS'
+        r'\bCSS3\b': 'CSS',
+        r'\bREST\b': 'API'
     }
     for pattern, replacement in title_mapping.items():
         skills = re.sub(pattern, replacement, skills)
@@ -103,7 +103,7 @@ def sort_and_count_key_skill(skills_txt):
 
     top_skills_text = '\n'.join([f"{skill} - {count}" for skill, count in sorted_skills[:10]])
 
-    return top_skills_text
+    return top_skills_text, sorted_skills[:10]
 
 
 # def main():
@@ -135,5 +135,4 @@ def sort_and_count_key_skill(skills_txt):
 
 # text_search = 'Пиво к=вы'
 # main()
-
 

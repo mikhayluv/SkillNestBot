@@ -1,3 +1,5 @@
 from typing import Final
 
 TOKEN: Final = '7184670082:AAErZdA_5G6-tcZHBoh7kjDTvM5xMv5UPMQ'
+stepik_client_id: Final = '4BjCrWI2HW5KMHFJdBvHz3dEtyWBrfOI4biaV81T'
+stepik_client_secret: Final = 'IpX6D9c6ZX1Vjzyutlu3dLPvNlk49RQOsLIRzMiVAedvMrhBImeGe9Ou0La86B8eo2LjzUksdImDAMbQPQe6rD5KwqG474OVUM8WXBnXBLLAI5CiHU4CA9nw4hdOK1Ic'

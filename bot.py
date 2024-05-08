@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 import config
 import database
 import hh_api
@@ -16,6 +17,7 @@ database.create_vacancy_data_table(conn)
 
 
 user_states = {}
+
 
 
 def log_message(message):
@@ -57,16 +59,19 @@ def get_text_messages(message):
 
             bot.send_message(message.from_user.id, f'По вашему запросу "{text_search}" было найдено {found} вакансий!')
 
-            try:
-                hh_api.get_and_store_vacancy(list_id, text_search)
-                skills = database.get_skills(conn, text_search)
-                skills = ', '.join([str(sk[0]) for sk in skills])
-                skills = hh_api.swap_skills(skills)
-                skills_list_top = hh_api.sort_and_count_key_skill(skills)
-                bot.send_message(message.from_user.id, f'Вот ТОП 10 навыков для "{text_search}":\n\n{skills_list_top}')
-            except Exception as e:
-                bot.send_message(message.from_user.id, f'Произошла ошибка: {e}')    #debug
-                bot.send_message(message.from_user.id, f'Произошли технические шоколадки :(')
+            # try:
+            hh_api.get_and_store_vacancy(list_id, text_search)
+            skills = database.get_skills(conn, text_search)
+            skills = ', '.join([str(sk[0]) for sk in skills])
+            skills = hh_api.swap_skills(skills)
+            skills_top, list_of_skills = hh_api.sort_and_count_key_skill(skills)
+            bot.send_message(message.from_user.id, f'Вот ТОП 10 навыков для "{text_search}":\n\n{skills_top}')
+            keyboard = make_keyboard(list_of_skills)
+            bot.send_message(message.from_user.id, 'Если хочешь подкачать навыки, выбери один из навыков:',
+                             reply_markup=keyboard)
+            # except Exception as e:
+            # bot.send_message(message.from_user.id, f'Произошла ошибка: {e}')    #debug
+            bot.send_message(message.from_user.id, f'Произошли технические шоколадки :(')
 
             return
 
@@ -79,6 +84,15 @@ def get_text_messages(message):
                                 'Напиши название вакансии, которая тебя интересует, а я проанализирую свежие объявления и подскажу тебе навыки!')
 
     return bot.send_message(message.from_user.id, "Я тебя не понимаю... Напиши /help.")
+
+
+def make_keyboard(skills_list_top):
+    keyboard = types.InlineKeyboardMarkup()
+    for skill, count in skills_list_top:
+        button = types.InlineKeyboardButton(text=skill, callback_data=f'skill_{skill}')
+        keyboard.add(button)
+
+    return keyboard
 
 
 def main():
