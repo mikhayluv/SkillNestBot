@@ -7,6 +7,8 @@ import database
 import hh_api
 import stepik_api
 import re
+import random
+
 
 bot = telebot.TeleBot(config.TOKEN)
 
@@ -55,46 +57,48 @@ def get_text_messages(message):
             text_search = text_search.lower()
             bot.send_message(message.from_user.id, f'Начинаю поиск по запросу\: *{bold_text_search}*', parse_mode=pmode)
 
-            try:
-                check = hh_api.check_vacancy_search(conn,text_search)
+            # try:
+            check = hh_api.check_vacancy_search(conn,text_search)
 
-                if isinstance(check, tuple):
-                    list_id, found = check
-                    if not found:
-                        user_states[message.from_user.id] = 'waiting_for_vacancy_name'
-                        unlucky_text = f'По вашему запросу *{bold_text_search}* не было найдено вакансий\.\nПроверьте введенные данные\!'
-                        bot.send_message(message.from_user.id, unlucky_text, parse_mode=pmode)
-                        return
+            if isinstance(check, tuple):
+                list_id, found = check
+                if not found:
+                    user_states[message.from_user.id] = 'waiting_for_vacancy_name'
+                    unlucky_text = f'По вашему запросу *{bold_text_search}* не было найдено вакансий\.\nПроверьте введенные данные\!'
+                    bot.send_message(message.from_user.id, unlucky_text, parse_mode=pmode)
+                    return
 
-                    text_found = f'По вашему запросу *{bold_text_search}* найдено *вакансий*\: *{found}*\!'
-                    bot.send_message(message.from_user.id, text_found, parse_mode=pmode)
-                    time.sleep(3)
-                    text_get_vac = 'Получаю самые актуальные вакансии с онлайн\-биржи *HeadHunter*\.\.\.'
-                    bot.send_message(message.from_user.id, text_get_vac, parse_mode=pmode)
-                    hh_api.get_and_store_vacancy(list_id, text_search)
-                    text_get_skills_data = 'Получаю требования из описаний полученных вакансий\.\.\.'
-                    bot.send_message(message.from_user.id, text_get_skills_data, parse_mode=pmode)
-                    skills = database.get_skills(conn, text_search)
-                    print(f'skills {skills}')
-                else:
-                    skills = check
-                skills = ', '.join([str(sk[0]) for sk in skills])
-                skills = hh_api.swap_skills(skills)
-                skills_top, list_of_skills = hh_api.sort_and_count_key_skill(skills)
-                skills_top = escape_special_characters(skills_top)
+                text_found = f'По вашему запросу *{bold_text_search}* найдено *вакансий*\: *{found}*\!'
+                bot.send_message(message.from_user.id, text_found, parse_mode=pmode)
                 time.sleep(3)
-                keyboard_skills = make_keyboard(list_of_skills)
-                text_result = f'Вот *ТОП*\-*10* навыков для *{bold_text_search}*\:\n\n{skills_top}\n\nЕсли не знаешь какой\-то навык, выбери его из списка ниже\!'
-                bot.send_message(message.from_user.id, text_result, parse_mode=pmode, reply_markup=keyboard_skills)
-            except Exception as e:
-                bot.send_message(message.from_user.id, f'Произошли технические шоколадки: {e}')
+                text_get_vac = 'Получаю самые актуальные вакансии с онлайн\-биржи *HeadHunter*\.\.\.'
+                bot.send_message(message.from_user.id, text_get_vac, parse_mode=pmode)
+                hh_api.get_and_store_vacancy(list_id, text_search)
+                text_get_skills_data = 'Получаю требования из описаний полученных вакансий\.\.\.'
+                bot.send_message(message.from_user.id, text_get_skills_data, parse_mode=pmode)
+                skills = database.get_skills(conn, text_search)
+                print(f'skills {skills}')
+            else:
+                skills = check
+            skills = ', '.join([str(sk[0]) for sk in skills])
+            skills = hh_api.swap_skills(skills)
+            skills_top, list_of_skills = hh_api.sort_and_count_key_skill(skills)
+            print(f'list_of_skills {list_of_skills}')
+            skills_top = escape_special_characters(skills_top)
+            time.sleep(3)
+            keyboard_skills = make_keyboard(list_of_skills)
+            text_result = f'Вот *ТОП*\-*10* навыков для вакансии *{bold_text_search}*\:\n\n{skills_top}\n\nЕсли не знаешь какой\-то навык, выбери его из списка ниже\!'
+            bot.send_message(message.from_user.id, text_result, parse_mode=pmode, reply_markup=keyboard_skills)
+            # except Exception as e:
+                # bot.send_message(message.from_user.id, f'Произошли технические шоколадки: {e}')
             return
 
         if state == 'waiting_for_сourse_name' and message.text != 'Навыки' and message.text != 'Курсы':
             try:
                 user_states[message.from_user.id] = 'work'
                 text_search = message.text
-                bot.send_message(message.from_user.id, f'Начинаю поиск курсов по навыку: *{text_search}*', parse_mode=pmode)
+                escaped_text_search = escape_special_characters(text_search)
+                bot.send_message(message.from_user.id, f'Начинаю поиск курсов по навыку: *{escaped_text_search}*', parse_mode=pmode)
                 list_of_skills = stepik_api.get_courses(conn, text_search)
                 if not list_of_skills:
                     user_states[message.from_user.id] = 'waiting_for_сourse_name'
@@ -110,7 +114,7 @@ def get_text_messages(message):
         bot.send_message(message.from_user.id, text_privet, parse_mode=pmode)
         return
     elif message.text.lower() == 'навыки':
-        text_navik = 'Напиши мне *название* *вакансии*, и я подскажу требования для неё\.'
+        text_navik = 'Напиши мне *название* *вакансии*, и я подскажу актуальные требования для её освоения\.'
         user_states[message.from_user.id] = 'waiting_for_vacancy_name'
         bot.send_message(message.from_user.id, text_navik, parse_mode=pmode)
         return
@@ -129,21 +133,22 @@ def course_from_stepik(callback):
     list_of_courses = stepik_api.get_courses(conn, skill)
     print(list_of_courses)
     mess = message_with_courses(list_of_courses, skill)
+    print(f'mess {mess}')
 
     return bot.send_message(callback.message.chat.id, mess, parse_mode=pmode)
 
 
 def escape_special_characters(text):
-    special_characters = r'_*[]()~`>#\+\-=|{}.!\]'
+    special_characters = r'_*[]()~`:>#\+\-=|{}.!\]'
     escaped_text = re.sub(r'([' + re.escape(special_characters) + r'])', r'\\\1', text)
 
     return escaped_text
 
 
 def message_with_courses(list_of_courses, text):
+    text = escape_special_characters(text)
     mess = f"Вот подборка курсов по навыку *{text}*\:\n\n"
     if not list_of_courses:
-        text = escape_special_characters(text)
         mess = f'По навыку *{text}* не было найдено хороших курсов\.'
     for course in list_of_courses:
         name = course[2]
@@ -165,7 +170,9 @@ def two_buttons():
 def make_keyboard(skills_list_top):
     keyboard = types.InlineKeyboardMarkup()
     for skill, count in skills_list_top:
-        button = types.InlineKeyboardButton(text=skill, callback_data=f'{skill}')
+        temp = skill.encode('utf-8')
+        skill_encoded = temp[:64].decode('utf-8')
+        button = types.InlineKeyboardButton(text=skill_encoded, callback_data=f'{skill_encoded}')
         keyboard.add(button)
 
     return keyboard

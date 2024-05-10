@@ -39,6 +39,7 @@ def get_chosen_courses(title):
     page_num = 1
     has_next_page = True
     pattern = re.compile(r'\b{}\b'.format(re.escape(title)), flags=re.IGNORECASE)
+    print(f'pattern {pattern}')
     while has_next_page and i < 3 and page_num <= 15:
         try:
             page_content = get_data(title, page_num)
@@ -77,7 +78,7 @@ def message_with_courses(list_of_courses):
 
 
 def main():
-    title = 'Vue.js'
+    title = 'c++'
     list_of_course = get_courses(conn, title)
     for course in list_of_course:
         name = course[2]
@@ -85,4 +86,4 @@ def main():
         print(f'name: {name}\nurl: {url}')
 
 
-main()
+# main()

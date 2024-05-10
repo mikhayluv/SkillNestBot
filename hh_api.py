@@ -26,7 +26,6 @@ def get_list_id_vacancies(search):
         for vac in data:
             list_id.append(vac['id'])
     else:
-        print(f'Для более быстрого анализа я просканирую 200 самых новых вакансий!')
         i = 0
         while i <= 1:
             params['per_page'] = 100
@@ -55,6 +54,10 @@ def get_and_store_vacancy(list_id, text_search):
     text_search = text_search.lower()
     for vac_id in list_id:
         data = get_data_vacancy(vac_id)
+        print(data)
+        print(f'type data: {type(data)}')
+        # if data.get('errors', {}).get('value') == 'captcha_required':
+        #     return
         vacancy_id = data.get('id')
         vacancy_name = data.get('name')
         area = data.get('area', {}).get('name')
@@ -89,19 +92,11 @@ def swap_skills(skills):
         r'\bFramework\b': '',
         r'\bLLM\b': 'NLP',
         r'\bComputer Vision\b': 'Компьютерное зрение'
-        # r'\b.js\b': 'js'
     }
     for pattern, replacement in title_mapping.items():
         skills = re.sub(pattern, replacement, skills)
 
     return skills
-
-
-def escape_special_characters(text):
-    special_characters = r'_*[]()~`>#\+\-=|{}.!\]'
-    escaped_text = re.sub(r'([' + re.escape(special_characters) + r'])', r'\\\1', text)
-
-    return escaped_text
 
 
 def sort_and_count_key_skill(skills_txt):
@@ -125,8 +120,8 @@ def check_vacancy_search(conn, text_search):
 
 
 def main():
-    skills = database.get_skills(conn, text_search)
-    print(skills)
+    # skills = database.get_skills(conn, text_search)
+    # print(skills)
     # result = check_vacancy_search(conn, text_search)
     # print(type(result))
     # print(result)
@@ -141,13 +136,13 @@ def main():
     #     print("skills:", skills)
 
 
-#     get_list_id_vacancies(text_search)
 # database.drop_table(conn, 'vacancy_data')
 # database.create_vacancy_data_table(conn)
 #
-# list_id = get_list_id_vacancies(text_search)
+    list_id = get_list_id_vacancies(text_search)
+    print(list_id)
 #
-# get_and_store_vacancy(list_id)
+    get_and_store_vacancy(list_id, text_search)
 # skills = database.get_skills(conn, text_search)
 # skills = ', '.join([str(sk[0]) for sk in skills])
 # skills = swap_skills(skills)
@@ -167,6 +162,5 @@ def main():
 #     print(f"{skill} - {count}")
 
 
-text_search = 'Java Back-end junior'
-text_search = text_search.lower()
+text_search = 'Java'
 # main()
