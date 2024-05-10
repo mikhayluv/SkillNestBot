@@ -64,3 +64,31 @@ def get_skills(conn, text_search):
     skills = cursor.fetchall()
     cursor.close()
     return skills
+
+
+def create_course_data_table(conn):
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS stepik_courses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,  
+                    course_id BIGINT NOT NULL, 
+                    name TEXT,
+                    url TEXT,
+                    skill TEXT)''')
+    conn.commit()
+    cursor.close()
+
+
+def add_course_data(conn, course_id, name, url, skill):
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO stepik_courses (course_id, name, url, skill) VALUES (?, ?, ?, ?)",
+                   (course_id, name, url, skill))
+    conn.commit()
+    cursor.close()
+
+
+def get_course_info(conn, skill):
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM stepik_courses WHERE skill = ?", (skill,))
+    courses = cursor.fetchall()
+    cursor.close()
+    return courses
